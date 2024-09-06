@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense, Dropout, Embedding, BatchNormalization
 from tensorflow.keras.models import Model
 from tensorflow.keras import Input
-from tensorflow.keras.optimizers import Adam, Adagrad, SGD, Momentum
+from tensorflow.keras.optimizers import Adam, Adagrad, SGD
 from tensorflow.keras.losses import MeanSquaredError, BinaryCrossentropy
 from sklearn.base import BaseEstimator, TransformerMixin
 from time import time
@@ -127,7 +127,8 @@ class NeuralFM(BaseEstimator, TransformerMixin):
         elif self.optimizer_type == 'SGD':
             self.optimizer = SGD(learning_rate=self.learning_rate)
         elif self.optimizer_type == 'Momentum':
-            self.optimizer = Momentum(learning_rate=self.learning_rate, momentum=0.95)
+            self.optimizer = SGD(learning_rate=self.learning_rate, momentum=0.95)
+
         
         # Compile model
         self.model.compile(optimizer=self.optimizer, loss=self.loss_fn)
