@@ -164,9 +164,9 @@ class NeuralFM(BaseEstimator, TransformerMixin):
 
             # init
             self.saver = tf.train.Saver()
-            init = tf.global_variables_initializer()
-            self.sess = tf.Session()
-            self.sess.run(init)
+            self.model = tf.keras.Model(inputs=[self.train_features, self.train_labels, self.dropout_keep, self.train_phase], outputs=self.out)
+            self.model.compile(optimizer=self.optimizer, loss=self.loss)
+
 
             # number of params
             total_parameters = 0
