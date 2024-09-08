@@ -22,7 +22,7 @@ from sklearn.metrics import log_loss
 from time import time
 import argparse
 import LoadData as DATA
-from tensorflow.contrib.layers.python.layers import batch_norm as batch_norm
+from tensorflow.keras.layers import BatchNormalization
 
 #################### Arguments ####################
 def parse_args():
@@ -218,12 +218,8 @@ class NeuralFM(BaseEstimator, TransformerMixin):
         return all_weights
 
     def batch_norm_layer(self, x, train_phase, scope_bn):
-        bn_train = batch_norm(x, decay=0.9, center=True, scale=True, updates_collections=None,
-            is_training=True, reuse=None, trainable=True, scope=scope_bn)
-        bn_inference = batch_norm(x, decay=0.9, center=True, scale=True, updates_collections=None,
-            is_training=False, reuse=True, trainable=True, scope=scope_bn)
-        z = tf.cond(train_phase, lambda: bn_train, lambda: bn_inference)
-        return z
+        bn = BatchNormalization()
+        return bn(x, training=train_phase)
 
     def partial_fit(self, data):  # fit a batch
         feed_dict = {self.train_features: data['X'], self.train_labels: data['Y'], self.dropout_keep: self.keep_prob, self.train_phase: True}
