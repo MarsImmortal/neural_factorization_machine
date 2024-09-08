@@ -75,7 +75,7 @@ class NeuralFM(BaseEstimator, TransformerMixin):
         self.epoch = epoch
         self.random_seed = random_seed
         self.keep_prob = np.array(keep_prob)
-        self.no_dropout = np.array([1 for i in xrange(len(keep_prob))])
+        self.no_dropout = np.array([1 for i in range(len(keep_prob))])
         self.optimizer_type = optimizer_type
         self.learning_rate = learning_rate
         self.batch_norm = batch_norm
@@ -95,7 +95,7 @@ class NeuralFM(BaseEstimator, TransformerMixin):
         self.graph = tf.Graph()
         with self.graph.as_default():  # , tf.device('/cpu:0'):
             # Set graph level random seed
-            tf.set_random_seed(self.random_seed)
+            tf.random.set_seed(self.random_seed)
             # Input data.
             self.train_features = tf.keras.Input(shape=(None,), dtype=tf.int32)
             self.train_labels = tf.keras.Input(shape=(1,), dtype=tf.float32)
