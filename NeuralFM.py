@@ -196,7 +196,7 @@ class NeuralFM(BaseEstimator, TransformerMixin):
             all_weights['bias'] = tf.Variable(b, dtype=tf.float32)
         else: # without pretrain
             all_weights['feature_embeddings'] = tf.Variable(
-                tf.random_normal([self.features_M, self.hidden_factor], 0.0, 0.01), name='feature_embeddings')  # features_M * K
+                tf.random.normal([self.features_M, self.hidden_factor], 0.0, 0.01), name='feature_embeddings')  # features_M * K
             all_weights['feature_bias'] = tf.Variable(tf.random_uniform([self.features_M, 1], 0.0, 0.0), name='feature_bias')  # features_M * 1
             all_weights['bias'] = tf.Variable(tf.constant(0.0), name='bias')  # 1 * 1
         # deep layers
