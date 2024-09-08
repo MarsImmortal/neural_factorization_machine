@@ -97,10 +97,11 @@ class NeuralFM(BaseEstimator, TransformerMixin):
             # Set graph level random seed
             tf.set_random_seed(self.random_seed)
             # Input data.
-            self.train_features = tf.placeholder(tf.int32, shape=[None, None])  # None * features_M
-            self.train_labels = tf.placeholder(tf.float32, shape=[None, 1])  # None * 1
-            self.dropout_keep = tf.placeholder(tf.float32, shape=[None])
-            self.train_phase = tf.placeholder(tf.bool)
+            self.train_features = tf.keras.Input(shape=(None,), dtype=tf.int32)
+            self.train_labels = tf.keras.Input(shape=(1,), dtype=tf.float32)
+            self.dropout_keep = tf.keras.Input(shape=(None,), dtype=tf.float32)
+            self.train_phase = tf.keras.Input(shape=(), dtype=tf.bool)
+
 
             # Variables.
             self.weights = self._initialize_weights()
