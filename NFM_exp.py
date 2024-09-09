@@ -7,26 +7,45 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.metrics import mean_squared_error, accuracy_score, log_loss
 from time import time
 import argparse
-import LoadData as DATA
+import LoadData_exp as DATA
 from tensorflow.keras.layers import BatchNormalization
 
+#################### Arguments ####################
 def parse_args():
-    parser = argparse.ArgumentParser(description="Neural Factorization Machine")
-    parser.add_argument('--dataset', type=str, required=True, help='Dataset name')
-    parser.add_argument('--hidden_factor', type=int, required=True, help='Number of hidden factors')
-    parser.add_argument('--layers', type=str, required=True, help='Comma-separated list of layer sizes')
-    parser.add_argument('--keep_prob', type=str, required=True, help='Comma-separated list of dropout probabilities')
-    parser.add_argument('--loss_type', type=str, required=True, help='Loss type: square_loss or log_loss')
-    parser.add_argument('--activation', type=str, required=True, help='Activation function: relu, sigmoid, tanh, identity')
-    parser.add_argument('--pretrain', type=int, required=True, help='Pretrain flag: 1 or 0')
-    parser.add_argument('--optimizer', type=str, required=True, help='Optimizer: e.g., AdagradOptimizer')
-    parser.add_argument('--lr', type=float, required=True, help='Learning rate')
-    parser.add_argument('--batch_norm', type=int, required=True, help='Batch normalization flag: 1 or 0')
-    parser.add_argument('--verbose', type=int, required=True, help='Verbosity level')
-    parser.add_argument('--early_stop', type=int, required=True, help='Early stopping flag: 1 or 0')
-    parser.add_argument('--epoch', type=int, required=True, help='Number of epochs')
+    parser = argparse.ArgumentParser(description="Run Neural FM.")
+    parser.add_argument('--path', nargs='?', default='data/',
+                        help='Input data path.')
+    parser.add_argument('--dataset', nargs='?', default='frappe',
+                        help='Choose a dataset.')
+    parser.add_argument('--epoch', type=int, default=200,
+                        help='Number of epochs.')
+    parser.add_argument('--pretrain', type=int, default=0,
+                        help='Pre-train flag. 0: train from scratch; 1: load from pretrain file')
+    parser.add_argument('--batch_size', type=int, default=128,
+                        help='Batch size.')
+    parser.add_argument('--hidden_factor', type=int, default=64,
+                        help='Number of hidden factors.')
+    parser.add_argument('--layers', nargs='?', default='[64]',
+                        help="Size of each layer.")
+    parser.add_argument('--keep_prob', nargs='?', default='[0.8,0.5]', 
+                        help='Keep probability (i.e., 1-dropout_ratio) for each deep layer and the Bi-Interaction layer. 1: no dropout. Note that the last index is for the Bi-Interaction layer.')
+    parser.add_argument('--lamda', type=float, default=0,
+                        help='Regularizer for bilinear part.')
+    parser.add_argument('--lr', type=float, default=0.05,
+                        help='Learning rate.')
+    parser.add_argument('--loss_type', nargs='?', default='square_loss',
+                        help='Specify a loss type (square_loss or log_loss).')
+    parser.add_argument('--optimizer', nargs='?', default='AdagradOptimizer',
+                        help='Specify an optimizer type (AdamOptimizer, AdagradOptimizer, GradientDescentOptimizer, MomentumOptimizer).')
+    parser.add_argument('--verbose', type=int, default=1,
+                        help='Show the results per X epochs (0, 1 ... any positive integer)')
+    parser.add_argument('--batch_norm', type=int, default=1,
+                    help='Whether to perform batch normaization (0 or 1)')
+    parser.add_argument('--activation', nargs='?', default='relu',
+                    help='Which activation function to use for deep layers: relu, sigmoid, tanh, identity')
+    parser.add_argument('--early_stop', type=int, default=1,
+                    help='Whether to perform early stop (0 or 1)')
     return parser.parse_args()
-
 class NeuralFM(BaseEstimator, TransformerMixin):
     def __init__(self, features_M, hidden_factor, layers, loss_type, pretrain_flag, epoch, batch_size, learning_rate, lamda_bilinear,
                  keep_prob, optimizer_type, batch_norm, activation_function, verbose, early_stop, random_seed=2016):
