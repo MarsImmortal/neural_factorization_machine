@@ -355,3 +355,20 @@ if __name__ == '__main__':
     best_epoch = model.valid_rmse.index(best_valid_score)
     print ("Best Iter(validation)= %d\t train = %.4f, valid = %.4f, test = %.4f [%.1f s]" 
            %(best_epoch+1, model.train_rmse[best_epoch], model.valid_rmse[best_epoch], model.test_rmse[best_epoch], time()-t1))
+    
+        # Assuming your model training and validation are done...
+    test_loss, test_accuracy = model.evaluate(test_data, test_labels)
+    print("Test Loss:", test_loss)
+    print("Test Accuracy:", test_accuracy)
+
+    # For plotting (optional)
+    if args.verbose:
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(8, 5))
+        plt.plot(history.history['loss'], label='Training Loss')
+        plt.plot(history.history['val_loss'], label='Validation Loss')
+        plt.title('Model Loss Over Epochs')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend()
+        plt.show()
