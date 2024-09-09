@@ -88,9 +88,10 @@ class NeuralFM(tf.keras.Model):
         self.optimizer = getattr(tf.keras.optimizers, self.optimizer_type)(learning_rate=self.learning_rate)
 
 
-    def call(self, inputs, training=False):
-        features, labels = inputs
-
+    def call(self, features, training=False):
+        # No unpacking of inputs here, only features are passed
+        
+        # Process the features as needed
         nonzero_embeddings = tf.gather(self.feature_embeddings.weights[0], features)
         summed_features_emb = tf.reduce_sum(nonzero_embeddings, axis=1)
         summed_features_emb_square = tf.square(summed_features_emb)
@@ -112,7 +113,7 @@ class NeuralFM(tf.keras.Model):
         FM = self.prediction(FM)
         Bilinear = tf.reduce_sum(FM, axis=1, keepdims=True)
         Feature_bias = tf.reduce_sum(tf.gather(self.feature_bias.weights[0], features), axis=1, keepdims=True)
-        Bias = self.bias(tf.ones_like(labels))
+        Bias = self.bias(tf.ones_like(Bilinear))
         
         out = Bilinear + Feature_bias + Bias
         return out
@@ -173,14 +174,11 @@ def main():
     model.compile(optimizer=model.optimizer, loss='mean_squared_error' if args.loss_type == 'square_loss' else 'binary_crossentropy')
 
     history = model.fit(
-        x=np.array(data.Train_data['X']),  # Ensure this is a numpy array
-        y=np.array(data.Train_data['Y']),  # Ensure this is a numpy array
+        x=data.Train_data['X'],  # Features passed here
+        y=data.Train_data['Y'],  # Labels passed here
         epochs=args.epoch,
         batch_size=args.batch_size,
-        validation_data=(
-            np.array(data.Validation_data['X']), 
-            np.array(data.Validation_data['Y'])
-        ),
+        validation_data=(data.Validation_data['X'], data.Validation_data['Y']),
         verbose=args.verbose
     )
 
