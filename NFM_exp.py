@@ -64,7 +64,7 @@ class NeuralFM(tf.keras.Model):
         self.activation_function = activation_function
         self.early_stop = early_stop
         self.train_rmse, self.valid_rmse, self.test_rmse = [], [], []
-        
+
         # Initialize model components
         self._init_model()
 
@@ -81,43 +81,54 @@ class NeuralFM(tf.keras.Model):
             previous_size = size
         self.prediction = tf.keras.layers.Dense(1)
 
-        # Ensure optimizer_type is set to 'Adagrad' in the arguments or code
-        self.optimizer_type = 'Adagrad'  # or set this dynamically based on input
-
         # Initialize the optimizer
-        self.optimizer = getattr(tf.keras.optimizers, self.optimizer_type)(learning_rate=self.learning_rate)
+        if self.optimizer_type == 'Adagrad':
+            self.optimizer = tf.keras.optimizers.Adagrad(learning_rate=self.learning_rate)
+        else:
+            raise ValueError(f"Optimizer {self.optimizer_type} is not recognized")
 
 
     def call(self, features, training=False):
-        # No unpacking of inputs here, only features are passed
+        # Ensure features are within valid range
+        max_index = tf.reduce_max(features)
+        valid_range_check = tf.less(max_index, self.features_M)
         
-        # Process the features as needed
-        nonzero_embeddings = tf.gather(self.feature_embeddings.weights[0], features)
-        summed_features_emb = tf.reduce_sum(nonzero_embeddings, axis=1)
-        summed_features_emb_square = tf.square(summed_features_emb)
-        
-        squared_features_emb = tf.square(nonzero_embeddings)
-        squared_sum_features_emb = tf.reduce_sum(squared_features_emb, axis=1)
-        
-        FM = 0.5 * (summed_features_emb_square - squared_sum_features_emb)
-        if self.batch_norm:
-            FM = tf.keras.layers.BatchNormalization()(FM, training=training)
-        FM = tf.nn.dropout(FM, self.keep_prob[-1])
-        
-        for layer in self.deep_layers:
-            FM = layer(FM)
+        def valid_case():
+            # Debugging
+            print(f"Features: {features}")
+            print(f"Feature embeddings: {self.feature_embeddings.weights[0].shape}")
+            
+            nonzero_embeddings = tf.gather(self.feature_embeddings.weights[0], features)
+            summed_features_emb = tf.reduce_sum(nonzero_embeddings, axis=1)
+            summed_features_emb_square = tf.square(summed_features_emb)
+            
+            squared_features_emb = tf.square(nonzero_embeddings)
+            squared_sum_features_emb = tf.reduce_sum(squared_features_emb, axis=1)
+            
+            FM = 0.5 * (summed_features_emb_square - squared_sum_features_emb)
             if self.batch_norm:
                 FM = tf.keras.layers.BatchNormalization()(FM, training=training)
-            FM = tf.nn.dropout(FM, self.keep_prob[len(self.deep_layers)])
-        
-        FM = self.prediction(FM)
-        Bilinear = tf.reduce_sum(FM, axis=1, keepdims=True)
-        Feature_bias = tf.reduce_sum(tf.gather(self.feature_bias.weights[0], features), axis=1, keepdims=True)
-        Bias = self.bias(tf.ones_like(Bilinear))
-        
-        out = Bilinear + Feature_bias + Bias
-        return out
+            FM = tf.nn.dropout(FM, self.keep_prob[-1])
+            
+            for layer in self.deep_layers:
+                FM = layer(FM)
+                if self.batch_norm:
+                    FM = tf.keras.layers.BatchNormalization()(FM, training=training)
+                FM = tf.nn.dropout(FM, self.keep_prob[len(self.deep_layers)])
+            
+            FM = self.prediction(FM)
+            Bilinear = tf.reduce_sum(FM, axis=1, keepdims=True)
+            Feature_bias = tf.reduce_sum(tf.gather(self.feature_bias.weights[0], features), axis=1, keepdims=True)
+            Bias = self.bias(tf.ones_like(Bilinear))
+            
+            out = Bilinear + Feature_bias + Bias
+            return out
 
+        def invalid_case():
+            raise ValueError(f"Feature index {max_index} exceeds embedding size {self.features_M}")
+        
+        out = tf.cond(valid_range_check, valid_case, invalid_case)
+        return out
     def train_step(self, data):
         features, labels = data
         with tf.GradientTape() as tape:
@@ -173,12 +184,18 @@ def main():
 
     model.compile(optimizer=model.optimizer, loss='mean_squared_error' if args.loss_type == 'square_loss' else 'binary_crossentropy')
 
+    # Ensure features and labels are in appropriate format
+    x_train = np.array(data.Train_data['X'])
+    y_train = np.array(data.Train_data['Y'])
+    x_val = np.array(data.Validation_data['X'])
+    y_val = np.array(data.Validation_data['Y'])
+
     history = model.fit(
-        x=data.Train_data['X'],  # Features passed here
-        y=data.Train_data['Y'],  # Labels passed here
+        x=x_train,  # Features
+        y=y_train,  # Labels
         epochs=args.epoch,
         batch_size=args.batch_size,
-        validation_data=(data.Validation_data['X'], data.Validation_data['Y']),
+        validation_data=(x_val, y_val),
         verbose=args.verbose
     )
 
@@ -187,8 +204,11 @@ def main():
     print("Minimum validation loss: ", min_loss)
     
     # Evaluate on test set
-    test_loss = model.evaluate({'features': data.Test_data['X'], 'labels': data.Test_data['Y']})
+    x_test = np.array(data.Test_data['X'])
+    y_test = np.array(data.Test_data['Y'])
+    test_loss = model.evaluate(x_test, y_test)
     print("Test Loss: ", test_loss)
+
 
 if __name__ == "__main__":
     main()
