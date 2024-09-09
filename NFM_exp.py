@@ -173,11 +173,14 @@ def main():
     model.compile(optimizer=model.optimizer, loss='mean_squared_error' if args.loss_type == 'square_loss' else 'binary_crossentropy')
 
     history = model.fit(
-        x=data.Train_data['X'],  # This should only be the features
-        y=data.Train_data['Y'],  # Labels passed separately
+        x=np.array(data.Train_data['X']),  # Ensure this is a numpy array
+        y=np.array(data.Train_data['Y']),  # Ensure this is a numpy array
         epochs=args.epoch,
         batch_size=args.batch_size,
-        validation_data=(data.Validation_data['X'], data.Validation_data['Y']),
+        validation_data=(
+            np.array(data.Validation_data['X']), 
+            np.array(data.Validation_data['Y'])
+        ),
         verbose=args.verbose
     )
 
