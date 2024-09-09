@@ -27,15 +27,18 @@ class LoadData:
         return len(self.features)
 
     def read_features(self, file):
-        ''' Read a feature file and map features to indices '''
-        with open(file, 'r') as f:
-            i = len(self.features)
-            for line in f:
-                items = line.strip().split(' ')
-                for item in items[1:]:
-                    if item not in self.features:
-                        self.features[item] = i
-                        i += 1
+        try:
+            with open(file, 'r') as f:
+                i = len(self.features)
+                for line in f:
+                    items = line.strip().split(' ')
+                    for item in items[1:]:
+                        if item not in self.features:
+                            self.features[item] = i
+                            i += 1
+        except FileNotFoundError:
+            print(f"Error: The file {file} does not exist.")
+            raise
 
     def construct_data(self, loss_type):
         ''' Construct training, validation, and test datasets '''
