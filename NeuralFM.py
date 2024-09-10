@@ -22,7 +22,7 @@ from sklearn.metrics import log_loss
 from time import time
 import argparse
 import LoadData as DATA
-from tensorflow.keras.layers import BatchNormalization
+from tensorflow.contrib.layers.python.layers import batch_norm as batch_norm
 
 #################### Arguments ####################
 def parse_args():
@@ -75,7 +75,7 @@ class NeuralFM(BaseEstimator, TransformerMixin):
         self.epoch = epoch
         self.random_seed = random_seed
         self.keep_prob = np.array(keep_prob)
-        self.no_dropout = np.array([1 for i in range(len(keep_prob))])
+        self.no_dropout = np.array([1 for i in xrange(len(keep_prob))])
         self.optimizer_type = optimizer_type
         self.learning_rate = learning_rate
         self.batch_norm = batch_norm
@@ -95,13 +95,12 @@ class NeuralFM(BaseEstimator, TransformerMixin):
         self.graph = tf.Graph()
         with self.graph.as_default():  # , tf.device('/cpu:0'):
             # Set graph level random seed
-            tf.random.set_seed(self.random_seed)
+            tf.set_random_seed(self.random_seed)
             # Input data.
-            self.train_features = tf.keras.Input(shape=(None,), dtype=tf.int32)
-            self.train_labels = tf.keras.Input(shape=(1,), dtype=tf.float32)
-            self.dropout_keep = tf.keras.Input(shape=(None,), dtype=tf.float32)
-            self.train_phase = tf.keras.Input(shape=(), dtype=tf.bool)
-
+            self.train_features = tf.placeholder(tf.int32, shape=[None, None])  # None * features_M
+            self.train_labels = tf.placeholder(tf.float32, shape=[None, 1])  # None * 1
+            self.dropout_keep = tf.placeholder(tf.float32, shape=[None])
+            self.train_phase = tf.placeholder(tf.bool)
 
             # Variables.
             self.weights = self._initialize_weights()
@@ -164,9 +163,9 @@ class NeuralFM(BaseEstimator, TransformerMixin):
 
             # init
             self.saver = tf.train.Saver()
-            self.model = tf.keras.Model(inputs=[self.train_features, self.train_labels, self.dropout_keep, self.train_phase], outputs=self.out)
-            self.model.compile(optimizer=self.optimizer, loss=self.loss)
-
+            init = tf.global_variables_initializer()
+            self.sess = tf.Session()
+            self.sess.run(init)
 
             # number of params
             total_parameters = 0
@@ -177,7 +176,7 @@ class NeuralFM(BaseEstimator, TransformerMixin):
                     variable_parameters *= dim.value
                 total_parameters += variable_parameters
             if self.verbose > 0:
-                print ("#params: %d" %total_parameters )
+                print "#params: %d" %total_parameters 
 
     def _initialize_weights(self):
         all_weights = dict()
@@ -196,7 +195,7 @@ class NeuralFM(BaseEstimator, TransformerMixin):
             all_weights['bias'] = tf.Variable(b, dtype=tf.float32)
         else: # without pretrain
             all_weights['feature_embeddings'] = tf.Variable(
-                tf.random.normal([self.features_M, self.hidden_factor], 0.0, 0.01), name='feature_embeddings')  # features_M * K
+                tf.random_normal([self.features_M, self.hidden_factor], 0.0, 0.01), name='feature_embeddings')  # features_M * K
             all_weights['feature_bias'] = tf.Variable(tf.random_uniform([self.features_M, 1], 0.0, 0.0), name='feature_bias')  # features_M * 1
             all_weights['bias'] = tf.Variable(tf.constant(0.0), name='bias')  # 1 * 1
         # deep layers
@@ -219,8 +218,12 @@ class NeuralFM(BaseEstimator, TransformerMixin):
         return all_weights
 
     def batch_norm_layer(self, x, train_phase, scope_bn):
-        bn = BatchNormalization()
-        return bn(x, training=train_phase)
+        bn_train = batch_norm(x, decay=0.9, center=True, scale=True, updates_collections=None,
+            is_training=True, reuse=None, trainable=True, scope=scope_bn)
+        bn_inference = batch_norm(x, decay=0.9, center=True, scale=True, updates_collections=None,
+            is_training=False, reuse=True, trainable=True, scope=scope_bn)
+        z = tf.cond(train_phase, lambda: bn_train, lambda: bn_inference)
+        return z
 
     def partial_fit(self, data):  # fit a batch
         feed_dict = {self.train_features: data['X'], self.train_labels: data['Y'], self.dropout_keep: self.keep_prob, self.train_phase: True}
@@ -355,20 +358,3 @@ if __name__ == '__main__':
     best_epoch = model.valid_rmse.index(best_valid_score)
     print ("Best Iter(validation)= %d\t train = %.4f, valid = %.4f, test = %.4f [%.1f s]" 
            %(best_epoch+1, model.train_rmse[best_epoch], model.valid_rmse[best_epoch], model.test_rmse[best_epoch], time()-t1))
-    
-        # Assuming your model training and validation are done...
-    test_loss, test_accuracy = model.evaluate(test_data, test_labels)
-    print("Test Loss:", test_loss)
-    print("Test Accuracy:", test_accuracy)
-
-    # For plotting (optional)
-    if args.verbose:
-        import matplotlib.pyplot as plt
-        plt.figure(figsize=(8, 5))
-        plt.plot(history.history['loss'], label='Training Loss')
-        plt.plot(history.history['val_loss'], label='Validation Loss')
-        plt.title('Model Loss Over Epochs')
-        plt.ylabel('Loss')
-        plt.xlabel('Epoch')
-        plt.legend()
-        plt.show()
